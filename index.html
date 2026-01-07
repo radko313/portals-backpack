@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Backpack - Tibia Style</title>
+
+  <!-- Portals SDK -->
+  <script src="https://portals-labs.github.io/portals-sdk/portals-sdk.js?v=10005456"></script>
+
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      image-rendering: pixelated;
+      image-rendering: -moz-crisp-edges;
+      image-rendering: crisp-edges;
+    }
+
+    body {
+      font-family: 'Press Start 2P', 'Courier New', monospace;
+      background: #1a1a1a;
+      color: #c0c0c0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 500px;
+      background: linear-gradient(135deg, #2a2a2a 0%, #1f1f1f 100%);
+      border: 3px solid #4a4a4a;
+      border-radius: 0;
+      box-shadow:
+        inset 0 2px 0 rgba(255,255,255,0.1),
+        inset 0 -2px 0 rgba(0,0,0,0.5),
+        0 10px 30px rgba(0,0,0,0.7);
+    }
+
+    .header {
+      background: linear-gradient(180deg, #3a3a3a 0%, #2a2a2a 100%);
+      padding: 12px 15px;
+      border-bottom: 2px solid #1a1a1a;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .title {
+      font-size: 11px;
+      color: #b8b8b8;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .close-btn {
+      background: #8b0000;
+      color: #fff;
+      border: 1px solid #5a0000;
+      padding: 6px 12px;
+      font-size: 9px;
+      cursor: pointer;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.2);
+    }
+
+    .close-btn:hover {
+      background: #a00000;
+    }
+
+    .close-btn:active {
+      box-shadow: inset 0 1px 3px rgba(0,0,0,0.5);
+    }
+
+    .capacity {
+      background: #1a1a1a;
+      padding: 8px 15px;
+      border-bottom: 2px solid #0a0a0a;
+      font-size: 9px;
+      color: #888;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .capacity-used {
+      color: #ffd700;
+    }
+
+    .backpack-grid {
+      padding: 10px;
+      display: grid;
+      grid-template-columns: repeat(8, 1fr);
+      gap: 4px;
+      background: #1a1a1a;
+    }
+
+    .slot {
+      aspect-ratio: 1;
+      background: linear-gradient(135deg, #2a2a2a 0%, #222 100%);
+      border: 2px solid #1a1a1a;
+      border-top-color: #3a3a3a;
+      border-left-color: #3a3a3a;
+      position: relative;
+      cursor: pointer;
+      transition: all 0.1s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .slot:hover {
+      background: linear-gradient(135deg, #353535 0%, #2a2a2a 100%);
+      border-color: #4a4a4a;
+    }
+
+    .slot.filled {
+      background: linear-gradient(135deg, #333 0%, #282828 100%);
+    }
+
+    .item-sprite {
+      font-size: 28px;
+      position: relative;
+      filter: drop-shadow(1px 1px 2px rgba(0,0,0,0.5));
+    }
+
+    /* When we add pixel art images later, use this */
+    .item-sprite img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      image-rendering: pixelated;
+    }
+
+    .item-quantity {
+      position: absolute;
+      bottom: 2px;
+      right: 3px;
+      font-size: 8px;
+      color: #fff;
+      text-shadow:
+        -1px -1px 0 #000,
+        1px -1px 0 #000,
+        -1px 1px 0 #000,
+        1px 1px 0 #000,
+        0 0 3px #000;
+      font-weight: bold;
+      pointer-events: none;
+    }
+
+    .item-name {
+      position: absolute;
+      bottom: -25px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.9);
+      padding: 4px 8px;
+      border: 1px solid #4a4a4a;
+      font-size: 8px;
+      white-space: nowrap;
+      z-index: 100;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+
+    .slot:hover .item-name {
+      opacity: 1;
+    }
+
+    .stats {
+      background: #1a1a1a;
+      padding: 10px 15px;
+      border-top: 2px solid #0a0a0a;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+
+    .stat {
+      text-align: center;
+      font-size: 8px;
+    }
+
+    .stat-label {
+      color: #666;
+      margin-bottom: 3px;
+      text-transform: uppercase;
+    }
+
+    .stat-value {
+      color: #ffd700;
+      font-size: 10px;
+    }
+
+    .footer {
+      background: #1a1a1a;
+      padding: 8px 15px;
+      border-top: 2px solid #0a0a0a;
+      font-size: 7px;
+      color: #555;
+      text-align: center;
+    }
+
+    @keyframes itemAdded {
+      0% {
+        transform: scale(0.5);
+        opacity: 0;
+      }
+      50% {
+        transform: scale(1.2);
+      }
+      100% {
+        transform: scale(1);
+        opacity: 1;
+      }
+    }
+
+    .slot.new-item {
+      animation: itemAdded 0.3s ease;
+    }
+
+    /* Rarity colors for borders */
+    .slot.rarity-common { border-color: #888; }
+    .slot.rarity-uncommon { border-color: #1eff00; }
+    .slot.rarity-rare { border-color: #0070ff; }
+    .slot.rarity-epic { border-color: #a335ee; }
+    .slot.rarity-legendary { border-color: #ff8000; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="title">🎒 Backpack</div>
+      <button class="close-btn" onclick="closeBackpack()">✕ CLOSE</button>
+    </div>
+
+    <div class="capacity">
+      <span>Capacity:</span>
+      <span><span class="capacity-used" id="usedSlots">0</span> / <span id="maxSlots">32</span></span>
+    </div>
+
+    <div class="backpack-grid" id="backpackGrid">
+      <!-- Slots will be generated by JavaScript -->
+    </div>
+
+    <div class="stats">
+      <div class="stat">
+        <div class="stat-label">Weight</div>
+        <div class="stat-value" id="totalWeight">0 oz</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Value</div>
+        <div class="stat-value" id="totalValue">0 gp</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Items</div>
+        <div class="stat-value" id="itemTypes">0</div>
+      </div>
+    </div>
+
+    <div class="footer">
+      Click item to remove • Portals Integration Active
+    </div>
+  </div>
+
+  <script src="backpack.js"></script>
+  <script>
+    const backpack = new TibiaBackpack({
+      maxSlots: 32,
+      debug: true,
+      taskPrefix: 'backpack'
+    });
+
+    function initializeGrid() {
+      const grid = document.getElementById('backpackGrid');
+      grid.innerHTML = '';
+
+      for (let i = 0; i < backpack.maxSlots; i++) {
+        const slot = document.createElement('div');
+        slot.className = 'slot';
+        slot.dataset.slotId = i;
+        grid.appendChild(slot);
+      }
+    }
+
+    function updateUI() {
+      const inventory = backpack.getInventory();
+      const grid = document.getElementById('backpackGrid');
+
+      // Update capacity
+      document.getElementById('usedSlots').textContent = inventory.items.length;
+      document.getElementById('maxSlots').textContent = backpack.maxSlots;
+
+      // Update stats
+      let totalWeight = 0;
+      let totalValue = 0;
+
+      inventory.items.forEach(item => {
+        totalWeight += (item.weight || 1) * item.quantity;
+        totalValue += (item.value || 1) * item.quantity;
+      });
+
+      document.getElementById('totalWeight').textContent = totalWeight + ' oz';
+      document.getElementById('totalValue').textContent = totalValue + ' gp';
+      document.getElementById('itemTypes').textContent = inventory.items.length;
+
+      // Clear all slots first
+      const slots = grid.querySelectorAll('.slot');
+      slots.forEach(slot => {
+        slot.classList.remove('filled', 'new-item', 'rarity-common', 'rarity-uncommon', 'rarity-rare', 'rarity-epic', 'rarity-legendary');
+        slot.innerHTML = '';
+        slot.onclick = null;
+      });
+
+      // Fill slots with items
+      inventory.items.forEach((item, index) => {
+        if (index >= backpack.maxSlots) return;
+
+        const slot = slots[index];
+        slot.classList.add('filled');
+        if (item.rarity) {
+          slot.classList.add('rarity-' + item.rarity);
+        }
+
+        // Get sprite based on quantity
+        const sprite = backpack.getItemSprite(item.id, item.quantity);
+
+        slot.innerHTML = `
+          <div class="item-sprite">${sprite}</div>
+          ${item.quantity > 1 ? `<div class="item-quantity">${item.quantity}</div>` : ''}
+          <div class="item-name">${item.name}</div>
+        `;
+
+        slot.onclick = () => removeItem(item.id);
+      });
+    }
+
+    function removeItem(itemId) {
+      const item = backpack.getItem(itemId);
+      if (!item) return;
+
+      if (confirm(`Remove ${item.name}?`)) {
+        backpack.removeItem(itemId, 1);
+        updateUI();
+      }
+    }
+
+    function closeBackpack() {
+      backpack.sendTaskUpdate('backpack_closed', 'SetActiveToCompleted');
+      PortalsSdk.closeIframe();
+    }
+
+    // Make updateUI available globally
+    window.updateUI = updateUI;
+
+    // Initialize
+    initializeGrid();
+    updateUI();
+
+    // Notify Portals
+    backpack.sendTaskUpdate('backpack_ready', 'SetNotActiveToCompleted');
+  </script>
+</body>
+</html>
