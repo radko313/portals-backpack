@@ -300,7 +300,7 @@
   function notifyKillWin() {
     if (typeof PortalsSdk !== 'undefined') {
       PortalsSdk.sendMessageToUnity(JSON.stringify({
-        TaskName: "24_CheckKillWin",
+        TaskName: "CheckKillWin",
         TaskTargetState: "SetNotActiveToCompleted"
       }));
     }
