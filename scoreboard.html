@@ -80,6 +80,24 @@
     #red-block .team-score { color: #fff; }
     #blue-block .team-score { color: #fff; }
 
+    .win-pips {
+      display: flex;
+      gap: 5px;
+      margin-top: 5px;
+    }
+
+    .win-pip {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.12);
+      border: 1px solid rgba(255,255,255,0.22);
+      transition: background 0.3s, border-color 0.3s;
+    }
+
+    #red-block .win-pip.earned { background: #ff6b6b; border-color: #ff6b6b; box-shadow: 0 0 6px #ff6b6b88; }
+    #blue-block .win-pip.earned { background: #74a9ff; border-color: #74a9ff; box-shadow: 0 0 6px #74a9ff88; }
+
     #divider {
       width: 1px;
       height: 60px;
@@ -173,11 +191,19 @@
     <div class="team-block" id="red-block">
       <div class="team-name">Red</div>
       <div class="team-score" id="red-score">0</div>
+      <div class="win-pips">
+        <div class="win-pip" id="red-pip-0"></div>
+        <div class="win-pip" id="red-pip-1"></div>
+      </div>
     </div>
     <div id="divider"></div>
     <div class="team-block" id="blue-block">
       <div class="team-name">Blue</div>
       <div class="team-score" id="blue-score">0</div>
+      <div class="win-pips">
+        <div class="win-pip" id="blue-pip-0"></div>
+        <div class="win-pip" id="blue-pip-1"></div>
+      </div>
     </div>
   </div>
   <div id="timer">5:00</div>
@@ -191,6 +217,9 @@
 <script>
   let redKills = 0;
   let blueKills = 0;
+  let redRoundWins = 0;
+  let blueRoundWins = 0;
+  const WINS_NEEDED = 2;
   let round = 0;
   let timerInterval = null;
   let secondsLeft = 300;
@@ -202,6 +231,8 @@
   const overlay      = document.getElementById('winner-overlay');
   const banner       = document.getElementById('winner-banner');
   const sub          = document.getElementById('winner-sub');
+  const redPips      = [document.getElementById('red-pip-0'), document.getElementById('red-pip-1')];
+  const bluePips     = [document.getElementById('blue-pip-0'), document.getElementById('blue-pip-1')];
 
   function formatTime(s) {
     const m = Math.floor(s / 60);
@@ -227,12 +258,18 @@
     if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
   }
 
-  function showWinner(team) {
+  function renderWins() {
+    redPips.forEach((pip, i) => pip.classList.toggle('earned', i < redRoundWins));
+    bluePips.forEach((pip, i) => pip.classList.toggle('earned', i < blueRoundWins));
+  }
+
+  function showWinner(team, seriesOver) {
     stopCountdown();
     banner.className = team;
-    if (team === 'red')  banner.textContent = '🔴 Red Wins!';
-    if (team === 'blue') banner.textContent = '🔵 Blue Wins!';
-    if (team === 'tie')  banner.textContent = 'It\'s a Tie!';
+    if (team === 'red')  banner.textContent = seriesOver ? '🔴 Red Wins the Series!' : '🔴 Red Wins the Round!';
+    if (team === 'blue') banner.textContent = seriesOver ? '🔵 Blue Wins the Series!' : '🔵 Blue Wins the Round!';
+    if (team === 'tie')  banner.textContent = seriesOver ? 'It\'s a Tie! GG!' : 'Round Tied!';
+    sub.textContent = seriesOver ? 'GG! Thanks for playing.' : 'Next round in 15 seconds...';
     overlay.classList.add('show');
     setTimeout(() => overlay.classList.remove('show'), 9000);
   }
@@ -268,9 +305,19 @@
 
   function handleRoundEnd() {
     stopCountdown();
-    if (redKills > blueKills)       showWinner('red');
-    else if (blueKills > redKills)  showWinner('blue');
-    else                            showWinner('tie');
+    let winner;
+    if (redKills > blueKills) {
+      winner = 'red';
+      redRoundWins++;
+    } else if (blueKills > redKills) {
+      winner = 'blue';
+      blueRoundWins++;
+    } else {
+      winner = 'tie';
+    }
+    renderWins();
+    const seriesOver = redRoundWins >= WINS_NEEDED || blueRoundWins >= WINS_NEEDED;
+    showWinner(winner, seriesOver);
   }
 
   // Listen for Portals messages
