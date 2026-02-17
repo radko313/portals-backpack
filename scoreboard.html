@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scoreboard</title>
+  <script src="https://portals-labs.github.io/portals-sdk/portals-sdk.js?v=10005456"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: transparent;
+      font-family: 'Segoe UI', Arial, sans-serif;
+      color: #fff;
+      pointer-events: none;
+      overflow: hidden;
+    }
+
+    #hud {
+      position: fixed;
+      top: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+
+    #round-label {
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: #ccc;
+      text-shadow: 0 1px 4px #000;
+    }
+
+    #scoreboard {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      background: rgba(0,0,0,0.55);
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .team-block {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 8px 28px;
+      min-width: 110px;
+    }
+
+    #red-block { background: rgba(200,40,40,0.35); }
+    #blue-block { background: rgba(40,80,200,0.35); }
+
+    .team-name {
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      opacity: 0.8;
+      margin-bottom: 2px;
+    }
+
+    #red-block .team-name { color: #ff6b6b; }
+    #blue-block .team-name { color: #74a9ff; }
+
+    .team-score {
+      font-size: 38px;
+      font-weight: 900;
+      line-height: 1;
+      text-shadow: 0 2px 8px rgba(0,0,0,0.7);
+    }
+
+    #red-block .team-score { color: #fff; }
+    #blue-block .team-score { color: #fff; }
+
+    #divider {
+      width: 1px;
+      height: 60px;
+      background: rgba(255,255,255,0.15);
+      align-self: center;
+    }
+
+    #timer {
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      color: #fff;
+      background: rgba(0,0,0,0.5);
+      padding: 3px 14px;
+      border-radius: 20px;
+      text-shadow: 0 1px 4px #000;
+    }
+
+    #timer.urgent {
+      color: #ff4444;
+      animation: pulse 0.8s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    /* Winner overlay */
+    #winner-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.6);
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      pointer-events: none;
+    }
+
+    #winner-overlay.show { display: flex; }
+
+    #winner-banner {
+      font-size: 52px;
+      font-weight: 900;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      text-shadow: 0 4px 20px rgba(0,0,0,0.8);
+      padding: 20px 48px;
+      border-radius: 16px;
+      animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    #winner-banner.red {
+      background: rgba(180,30,30,0.85);
+      color: #fff;
+      border: 3px solid #ff6b6b;
+    }
+
+    #winner-banner.blue {
+      background: rgba(25,60,170,0.85);
+      color: #fff;
+      border: 3px solid #74a9ff;
+    }
+
+    #winner-banner.tie {
+      background: rgba(60,60,60,0.85);
+      color: #ddd;
+      border: 3px solid #888;
+    }
+
+    #winner-sub {
+      margin-top: 12px;
+      font-size: 16px;
+      letter-spacing: 2px;
+      color: rgba(255,255,255,0.7);
+      text-shadow: 0 1px 4px #000;
+    }
+
+    @keyframes popIn {
+      from { transform: scale(0.5); opacity: 0; }
+      to   { transform: scale(1);   opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+
+<div id="hud">
+  <div id="round-label">Round 1</div>
+  <div id="scoreboard">
+    <div class="team-block" id="red-block">
+      <div class="team-name">Red</div>
+      <div class="team-score" id="red-score">0</div>
+    </div>
+    <div id="divider"></div>
+    <div class="team-block" id="blue-block">
+      <div class="team-name">Blue</div>
+      <div class="team-score" id="blue-score">0</div>
+    </div>
+  </div>
+  <div id="timer">5:00</div>
+</div>
+
+<div id="winner-overlay">
+  <div id="winner-banner"></div>
+  <div id="winner-sub">Next round in 10 seconds...</div>
+</div>
+
+<script>
+  let redKills = 0;
+  let blueKills = 0;
+  let round = 0;
+  let timerInterval = null;
+  let secondsLeft = 300;
+
+  const redScoreEl   = document.getElementById('red-score');
+  const blueScoreEl  = document.getElementById('blue-score');
+  const roundLabel   = document.getElementById('round-label');
+  const timerEl      = document.getElementById('timer');
+  const overlay      = document.getElementById('winner-overlay');
+  const banner       = document.getElementById('winner-banner');
+  const sub          = document.getElementById('winner-sub');
+
+  function formatTime(s) {
+    const m = Math.floor(s / 60);
+    const sec = s % 60;
+    return `${m}:${String(sec).padStart(2, '0')}`;
+  }
+
+  function startCountdown(seconds) {
+    stopCountdown();
+    secondsLeft = seconds;
+    timerEl.textContent = formatTime(secondsLeft);
+    timerEl.classList.remove('urgent');
+    timerInterval = setInterval(() => {
+      secondsLeft--;
+      if (secondsLeft < 0) secondsLeft = 0;
+      timerEl.textContent = formatTime(secondsLeft);
+      timerEl.classList.toggle('urgent', secondsLeft <= 30);
+      if (secondsLeft === 0) stopCountdown();
+    }, 1000);
+  }
+
+  function stopCountdown() {
+    if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+  }
+
+  function showWinner(team) {
+    stopCountdown();
+    banner.className = team;
+    if (team === 'red')  banner.textContent = '🔴 Red Wins!';
+    if (team === 'blue') banner.textContent = '🔵 Blue Wins!';
+    if (team === 'tie')  banner.textContent = 'It\'s a Tie!';
+    overlay.classList.add('show');
+    setTimeout(() => overlay.classList.remove('show'), 9000);
+  }
+
+  function handleRoundStart() {
+    round++;
+    redKills = 0;
+    blueKills = 0;
+    redScoreEl.textContent = '0';
+    blueScoreEl.textContent = '0';
+    roundLabel.textContent = `Round ${round}`;
+    overlay.classList.remove('show');
+    startCountdown(300);
+  }
+
+  function handleRoundEnd() {
+    stopCountdown();
+    if (redKills > blueKills)       showWinner('red');
+    else if (blueKills > redKills)  showWinner('blue');
+    else                            showWinner('tie');
+  }
+
+  // Listen for Portals messages
+  if (typeof PortalsSdk !== 'undefined') {
+    PortalsSdk.setMessageListener((msg) => {
+      const m = (msg || '').trim();
+      if (m === 'round_start') {
+        handleRoundStart();
+      } else if (m === 'red_kill') {
+        redKills++;
+        redScoreEl.textContent = redKills;
+      } else if (m === 'blue_kill') {
+        blueKills++;
+        blueScoreEl.textContent = blueKills;
+      } else if (m === 'round_end') {
+        handleRoundEnd();
+      }
+    });
+  }
+
+  // Start a round immediately on load (in case player joins mid-round)
+  // They'll get a proper round_start signal when next round begins
+  timerEl.textContent = '5:00';
+</script>
+</body>
+</html>
