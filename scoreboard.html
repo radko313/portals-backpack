@@ -284,15 +284,26 @@
       } else if (m === 'red_kill') {
         redKills++;
         redScoreEl.textContent = redKills;
+        if (redKills >= 10) notifyKillWin();
       } else if (m === 'blue_kill') {
         blueKills++;
         blueScoreEl.textContent = blueKills;
+        if (blueKills >= 10) notifyKillWin();
       } else if (m === 'round_end') {
         handleRoundEnd();
       } else if (m.startsWith('sync_')) {
         handleSync(parseInt(m.substring(5)));
       }
     });
+  }
+
+  function notifyKillWin() {
+    if (typeof PortalsSdk !== 'undefined') {
+      PortalsSdk.sendMessageToUnity(JSON.stringify({
+        TaskName: "CheckKillWin",
+        TaskTargetState: "SetNotActiveToCompleted"
+      }));
+    }
   }
 
   timerEl.textContent = '...';
