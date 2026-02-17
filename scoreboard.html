@@ -237,6 +237,19 @@
     setTimeout(() => overlay.classList.remove('show'), 9000);
   }
 
+  function handlePreRoundStart() {
+    stopCountdown();
+    roundLabel.textContent = 'GET READY';
+    timerEl.classList.remove('urgent');
+    let count = 10;
+    timerEl.textContent = count;
+    timerInterval = setInterval(() => {
+      count--;
+      if (count <= 0) { stopCountdown(); timerEl.textContent = '0'; }
+      else timerEl.textContent = count;
+    }, 1000);
+  }
+
   function handleRoundStart() {
     round++;
     redKills = 0;
@@ -246,6 +259,11 @@
     roundLabel.textContent = `Round ${round}`;
     overlay.classList.remove('show');
     startCountdown(300);
+  }
+
+  function handleSync(elapsed) {
+    if (elapsed <= 0 || elapsed >= 300) return;
+    startCountdown(300 - elapsed);
   }
 
   function handleRoundEnd() {
@@ -259,7 +277,9 @@
   if (typeof PortalsSdk !== 'undefined') {
     PortalsSdk.setMessageListener((msg) => {
       const m = (msg || '').trim();
-      if (m === 'round_start') {
+      if (m === 'preround_start') {
+        handlePreRoundStart();
+      } else if (m === 'round_start') {
         handleRoundStart();
       } else if (m === 'red_kill') {
         redKills++;
@@ -269,13 +289,13 @@
         blueScoreEl.textContent = blueKills;
       } else if (m === 'round_end') {
         handleRoundEnd();
+      } else if (m.startsWith('sync_')) {
+        handleSync(parseInt(m.substring(5)));
       }
     });
   }
 
-  // Start a round immediately on load (in case player joins mid-round)
-  // They'll get a proper round_start signal when next round begins
-  timerEl.textContent = '5:00';
+  timerEl.textContent = '...';
 </script>
 </body>
 </html>
