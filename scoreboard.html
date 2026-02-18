@@ -275,6 +275,7 @@
   }
 
   function handlePreRoundStart() {
+    overlay.classList.remove('show');
     stopCountdown();
     roundLabel.textContent = 'GET READY';
     timerEl.classList.remove('urgent');
